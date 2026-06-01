@@ -1,3 +1,5 @@
+"""ATM 系统控制器模块，处理用户输入并协调 Model/View 交互"""
+
 from lang import tr, toggle as lang_toggle
 from views import (LoginFrame, MenuFrame, BalanceFrame, ActionFrame,
                    TransferFrame, HistoryFrame, ChangePwdFrame, RegisterFrame)
@@ -14,6 +16,7 @@ class ATMController:
     # ---- Login ----
 
     def login(self, acc, pwd):
+        """验证账号密码并登录"""
         if not acc or not pwd:
             self.view.show_message("error", tr('err_invalid_input'), is_error=True)
             return
@@ -28,6 +31,7 @@ class ATMController:
             self.view.show_message("error", msg, is_error=True)
 
     def logout(self):
+        """注销当前用户，返回登录界面"""
         self.model.logout()
         self.view.switch_frame(LoginFrame)
 
