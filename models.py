@@ -1,3 +1,5 @@
+"""ATM 系统数据模型，管理用户账户、交易记录和持久化存储"""
+
 import json
 import os
 import time
@@ -74,12 +76,14 @@ class ATMModel:
     # ---- Helpers ----
 
     def _find_user(self, account):
+        """根据账号字符串查找用户字典，未找到返回 None"""
         for u in self.data["users"]:
             if u["account"] == account:
                 return u
         return None
 
     def _get_current_user(self):
+        """获取当前登录用户字典，未登录返回 None"""
         if not self.current_account:
             return None
         return self._find_user(self.current_account)
