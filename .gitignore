@@ -1,1 +1,15 @@
+# Python
 __pycache__/
+*.pyc
+*.pyo
+venv/
+
+# Node.js
+node_modules/
+
+# 课程材料（非项目代码）
+course_need/
+
+# 系统文件
+.DS_Store
+Thumbs.db

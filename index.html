@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AETHER · 私人银行模拟</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
+<style>
+/* ========== Reset & Base ========== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0a0a0c;
+  --bg-card: rgba(26,26,30,0.82);
+  --border: rgba(212,165,116,0.15);
+  --border-focus: rgba(212,165,116,0.5);
+  --gold: #d4a574;
+  --gold-light: #e8cfa6;
+  --gold-dark: #b8885a;
+  --text: #f5f0eb;
+  --text-dim: rgba(245,240,235,0.5);
+  --text-muted: rgba(245,240,235,0.35);
+  --error: #ef4455;
+  --error-bg: rgba(239,68,85,0.1);
+  --success: #10b981;
+  --success-bg: rgba(16,185,129,0.1);
+  --radius: 16px;
+  --shadow: 0 25px 50px -12px rgba(0,0,0,0.8);
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html, body {
+  height: 100%;
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ========== Background Canvas ========== */
+#bg-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ========== Screen Container ========== */
+.app {
+  position: relative;
+  z-index: 1;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.screen {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg-card);
+  backdrop-filter: blur(24px) saturate(1.3);
+  -webkit-backdrop-filter: blur(24px) saturate(1.3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 40px 36px 36px;
+  box-shadow: var(--shadow);
+  animation: screenIn 0.5s cubic-bezier(0.16,1,0.3,1) forwards;
+  transform-origin: center;
+}
+
+@keyframes screenIn {
+  0% { opacity: 0; transform: scale(0.94) translateY(12px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.screen.active { display: flex; }
+.screen.exit {
+  display: flex;
+  animation: screenOut 0.3s cubic-bezier(0.5,0,0.5,1) forwards;
+  pointer-events: none;
+}
+
+@keyframes screenOut {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.96) translateY(8px); }
+}
+
+/* ========== Logo / Brand ========== */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.brand-icon {
+  width: 36px; height: 36px;
+  border: 1.5px solid var(--gold);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--gold);
+}
+.brand-name {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 4px;
+  color: var(--gold);
+  text-transform: uppercase;
+}
+.brand-sub {
+  font-size: 13px;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  font-weight: 300;
+  margin-bottom: 28px;
+}
+
+/* ========== Typography ========== */
+h1 {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+h2 {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 500;
+  margin-bottom: 20px;
+  font-style: italic;
+  color: var(--gold);
+}
+
+/* ========== Form Elements ========== */
+.form-group {
+  width: 100%;
+  margin-bottom: 16px;
+}
+.form-group label {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+.form-group input {
+  width: 100%;
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 15px;
+  font-family: var(--font-sans);
+  outline: none;
+  transition: var(--transition);
+}
+.form-group input:focus {
+  border-color: var(--border-focus);
+  background: rgba(255,255,255,0.07);
+  box-shadow: 0 0 0 3px rgba(212,165,116,0.08);
+}
+.form-group input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ========== Buttons ========== */
+.btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: var(--transition);
+  letter-spacing: 0.3px;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+  color: #0a0a0c;
+  font-weight: 600;
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(212,165,116,0.25);
+}
+.btn-primary:active {
+  transform: translateY(0);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  margin-top: 8px;
+}
+.btn-ghost:hover {
+  border-color: rgba(212,165,116,0.3);
+  color: var(--text);
+}
+.btn-danger {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid rgba(239,68,85,0.2);
+  margin-top: 8px;
+}
+.btn-danger:hover {
+  border-color: rgba(239,68,85,0.4);
+  color: var(--error);
+}
+
+/* ========== Inline Message ========== */
+.msg {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  margin-bottom: 16px;
+  display: none;
+  text-align: center;
+  animation: msgIn 0.35s ease;
+}
+.msg.show { display: block; }
+.msg.error {
+  background: var(--error-bg);
+  color: var(--error);
+  border: 1px solid rgba(239,68,85,0.15);
+}
+.msg.success {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid rgba(16,185,129,0.15);
+}
+
+@keyframes msgIn {
+  0% { opacity: 0; transform: translateY(-6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ========== Menu Grid ========== */
+.menu-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 8px;
+}
+.menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 22px 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--text);
+  text-decoration: none;
+  -webkit-appearance: none;
+}
+.menu-item:hover {
+  background: rgba(212,165,116,0.08);
+  border-color: rgba(212,165,116,0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+.menu-item:active {
+  transform: translateY(0);
+}
+.menu-item .icon {
+  font-size: 26px;
+  line-height: 1;
+}
+.menu-item .label {
+  font-weight: 500;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+.menu-item.full {
+  grid-column: 1 / -1;
+}
+
+/* ========== Balance Display ========== */
+.balance-amount {
+  font-family: var(--font-serif);
+  font-size: 40px;
+  font-weight: 600;
+  color: var(--gold);
+  letter-spacing: 2px;
+  margin: 16px 0 8px;
+  text-shadow: 0 0 40px rgba(212,165,116,0.1);
+}
+.balance-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  margin-bottom: 24px;
+}
+
+/* ========== Password Strength Meter ========== */
+.pwd-hint {
+  width: 100%;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: -10px;
+  margin-bottom: 16px;
+  padding-left: 4px;
+}
+
+/* ========== Welcome Header ========== */
+.welcome-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.welcome-head .greeting {
+  font-size: 14px;
+  color: var(--text-dim);
+}
+.welcome-head .acc {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  color: var(--gold);
+  font-style: italic;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 480px) {
+  .app { padding: 12px; }
+  .screen { padding: 28px 20px 24px; border-radius: 14px; }
+  .balance-amount { font-size: 32px; }
+  .menu-grid { gap: 10px; }
+  .menu-item { padding: 18px 10px; }
+  .brand-name { font-size: 18px; letter-spacing: 3px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ========== Background Canvas ========== -->
+<canvas id="bg-canvas"></canvas>
+
+<!-- ========== App Container ========== -->
+<div class="app" id="app">
+
+  <!-- ===== Login ===== -->
+  <div class="screen active" id="screen-login">
+    <div class="brand">
+      <div class="brand-icon">✦</div>
+      <span class="brand-name">AETHER</span>
+    </div>
+    <div class="brand-sub">私人银行 · 安全接入</div>
+
+    <div class="msg" id="login-msg"></div>
+
+    <div class="form-group">
+      <label>账号</label>
+      <input type="text" id="login-acc" placeholder="输入账号" value="123456" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label>密码</label>
+      <input type="password" id="login-pwd" placeholder="输入密码" value="123456">
+    </div>
+
+    <button class="btn btn-primary" id="login-btn">进入金库</button>
+  </div>
+
+  <!-- ===== Menu ===== -->
+  <div class="screen" id="screen-menu">
+    <div class="welcome-head">
+      <span class="greeting">欢迎回来</span>
+      <span class="acc" id="menu-acc"></span>
+    </div>
+    <h2>请选择服务</h2>
+
+    <div class="menu-grid">
+      <button class="menu-item" data-action="balance">
+        <span class="icon">🏦</span>
+        <span class="label">查询余额</span>
+      </button>
+      <button class="menu-item" data-action="deposit">
+        <span class="icon">💰</span>
+        <span class="label">存款业务</span>
+      </button>
+      <button class="menu-item" data-action="withdraw">
+        <span class="icon">💳</span>
+        <span class="label">取款业务</span>
+      </button>
+      <button class="menu-item" data-action="change-pwd">
+        <span class="icon">🔐</span>
+        <span class="label">修改密码</span>
+      </button>
+      <button class="menu-item full" data-action="logout">
+        <span class="icon">🚪</span>
+        <span class="label">退出登录</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== Balance ===== -->
+  <div class="screen" id="screen-balance">
+    <div class="brand" style="margin-bottom:4px">
+      <div class="brand-icon">✦</div>
+      <span class="brand-name">AETHER</span>
+    </div>
+    <div class="balance-label">账户当前余额</div>
+    <div class="balance-amount" id="balance-value">¥ 0.00</div>
+
+    <div class="msg" id="balance-msg"></div>
+
+    <button class="btn btn-primary" id="balance-back">返回主菜单</button>
+  </div>
+
+  <!-- ===== Deposit ===== -->
+  <div class="screen" id="screen-deposit">
+    <h1>存款业务</h1>
+    <div class="msg" id="deposit-msg"></div>
+    <div class="form-group">
+      <label>存入金额（元）</label>
+      <input type="number" id="deposit-amount" placeholder="0.00" min="0" step="0.01">
+    </div>
+    <button class="btn btn-primary" id="deposit-submit">确认存款</button>
+    <button class="btn btn-ghost" id="deposit-back">返回主菜单</button>
+  </div>
+
+  <!-- ===== Withdraw ===== -->
+  <div class="screen" id="screen-withdraw">
+    <h1>取款业务</h1>
+    <div class="msg" id="withdraw-msg"></div>
+    <div class="form-group">
+      <label>取款金额（元）</label>
+      <input type="number" id="withdraw-amount" placeholder="0" min="0" step="100">
+    </div>
+    <p class="pwd-hint">限取 100 的倍数，单笔不超过 ¥5,000</p>
+    <button class="btn btn-primary" id="withdraw-submit">确认取款</button>
+    <button class="btn btn-ghost" id="withdraw-back">返回主菜单</button>
+  </div>
+
+  <!-- ===== Change Password ===== -->
+  <div class="screen" id="screen-changepwd">
+    <h1>安全中心</h1>
+    <div class="msg" id="pwd-msg"></div>
+    <div class="form-group">
+      <label>当前密码</label>
+      <input type="password" id="pwd-old" placeholder="输入当前密码">
+    </div>
+    <div class="form-group">
+      <label>新密码</label>
+      <input type="password" id="pwd-new" placeholder="至少 6 位字符">
+    </div>
+    <div class="form-group">
+      <label>确认新密码</label>
+      <input type="password" id="pwd-confirm" placeholder="再次输入新密码">
+    </div>
+    <button class="btn btn-primary" id="pwd-submit">确认修改</button>
+    <button class="btn btn-ghost" id="pwd-back">返回主菜单</button>
+  </div>
+
+</div>
+
+<script>
+// ========================================================================
+//  Background Canvas – Floating Orbs
+// ========================================================================
+const canvas = document.getElementById('bg-canvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+class Orb {
+  constructor() { this.reset(); }
+  reset() {
+    this.r = 80 + Math.random() * 200;
+    this.x = Math.random() * (W + this.r * 2) - this.r;
+    this.y = Math.random() * (H + this.r * 2) - this.r;
+    this.vx = (Math.random() - 0.5) * 0.25;
+    this.vy = (Math.random() - 0.5) * 0.25;
+    this.alpha = 0.015 + Math.random() * 0.025;
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy;
+    if (this.x < -this.r * 2 || this.x > W + this.r * 2 ||
+        this.y < -this.r * 2 || this.y > H + this.r * 2) this.reset();
+  }
+  draw() {
+    const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.r);
+    grad.addColorStop(0, `rgba(212,165,116,${this.alpha})`);
+    grad.addColorStop(0.4, `rgba(180,140,100,${this.alpha * 0.5})`);
+    grad.addColorStop(1, 'rgba(212,165,116,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+const orbs = Array.from({ length: 6 }, () => new Orb());
+
+function drawBg() {
+  ctx.clearRect(0, 0, W, H);
+  orbs.forEach(o => { o.update(); o.draw(); });
+  requestAnimationFrame(drawBg);
+}
+drawBg();
+
+// ========================================================================
+//  ATM Model (localStorage)
+// ========================================================================
+const STORAGE_KEY = 'aether_atm';
+
+const defaultData = {
+  account: '123456',
+  password: '123456',
+  balance: 10000.0
+};
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      if (d && d.account && d.password && typeof d.balance === 'number') return d;
+    }
+  } catch (_) { /* ignore */ }
+  saveData(defaultData);
+  return { ...defaultData };
+}
+
+function saveData(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+let data = loadData();
+
+// ========================================================================
+//  Screen Manager
+// ========================================================================
+let currentScreen = 'login';
+
+function showScreen(id) {
+  const currentEl = document.getElementById('screen-' + currentScreen);
+  const nextEl = document.getElementById('screen-' + id);
+  if (!currentEl || !nextEl) return;
+
+  // Exit animation on current
+  if (currentEl !== nextEl) {
+    currentEl.classList.remove('active');
+    currentEl.classList.add('exit');
+    setTimeout(() => { currentEl.classList.remove('exit'); }, 350);
+  }
+
+  nextEl.classList.add('active');
+  currentScreen = id;
+
+  // Focus first input in the new screen
+  const firstInput = nextEl.querySelector('input');
+  if (firstInput) setTimeout(() => firstInput.focus(), 100);
+}
+
+function showMsg(id, text, type) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'msg show ' + type;
+}
+
+function clearMsg(id) {
+  const el = document.getElementById(id);
+  if (el) { el.className = 'msg'; el.textContent = ''; }
+}
+
+// ========================================================================
+//  Controller – Login
+// ========================================================================
+document.getElementById('login-btn').addEventListener('click', () => {
+  clearMsg('login-msg');
+  const acc = document.getElementById('login-acc').value.trim();
+  const pwd = document.getElementById('login-pwd').value;
+
+  if (!acc || !pwd) {
+    showMsg('login-msg', '请输入账号和密码', 'error');
+    return;
+  }
+
+  if (acc === data.account && pwd === data.password) {
+    document.getElementById('menu-acc').textContent = '账号 ' + data.account;
+    showScreen('menu');
+  } else {
+    showMsg('login-msg', '账号或密码不正确', 'error');
+  }
+});
+
+// Enter key on password field triggers login
+document.getElementById('login-pwd').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('login-btn').click();
+});
+
+// ========================================================================
+//  Controller – Menu
+// ========================================================================
+document.querySelectorAll('.menu-item').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const action = btn.dataset.action;
+    switch (action) {
+      case 'balance': showBalance(); break;
+      case 'deposit': showScreen('deposit'); clearMsg('deposit-msg'); break;
+      case 'withdraw': showScreen('withdraw'); clearMsg('withdraw-msg'); break;
+      case 'change-pwd': showScreen('changepwd'); clearMsg('pwd-msg'); break;
+      case 'logout': logout(); break;
+    }
+  });
+});
+
+function logout() {
+  data = loadData(); // re-sync
+  // Clear all input fields
+  document.getElementById('login-acc').value = '123456';
+  document.getElementById('login-pwd').value = '123456';
+  clearMsg('login-msg');
+  showScreen('login');
+}
+
+// ========================================================================
+//  Controller – Balance
+// ========================================================================
+function showBalance() {
+  data = loadData();
+  document.getElementById('balance-value').textContent = '¥ ' + data.balance.toFixed(2);
+  clearMsg('balance-msg');
+  showScreen('balance');
+}
+
+document.getElementById('balance-back').addEventListener('click', () => showScreen('menu'));
+
+// ========================================================================
+//  Controller – Deposit
+// ========================================================================
+document.getElementById('deposit-submit').addEventListener('click', () => {
+  clearMsg('deposit-msg');
+  data = loadData();
+  const input = document.getElementById('deposit-amount');
+  const amount = parseFloat(input.value);
+
+  if (isNaN(amount) || amount <= 0) {
+    showMsg('deposit-msg', '请输入有效的存款金额', 'error');
+    return;
+  }
+
+  data.balance += amount;
+  saveData(data);
+  showMsg('deposit-msg', '存款成功！当前余额 ¥' + data.balance.toFixed(2), 'success');
+  input.value = '';
+
+  setTimeout(() => showScreen('menu'), 1200);
+});
+
+document.getElementById('deposit-back').addEventListener('click', () => showScreen('menu'));
+
+// ========================================================================
+//  Controller – Withdraw
+// ========================================================================
+document.getElementById('withdraw-submit').addEventListener('click', () => {
+  clearMsg('withdraw-msg');
+  data = loadData();
+  const input = document.getElementById('withdraw-amount');
+  const amount = parseInt(input.value, 10);
+
+  if (isNaN(amount) || amount <= 0) {
+    showMsg('withdraw-msg', '请输入有效的取款金额', 'error');
+    return;
+  }
+  if (amount % 100 !== 0) {
+    showMsg('withdraw-msg', '取款金额必须是 100 的倍数', 'error');
+    return;
+  }
+  if (amount > 5000) {
+    showMsg('withdraw-msg', '单次取款不能超过 ¥5,000', 'error');
+    return;
+  }
+  if (amount > data.balance) {
+    showMsg('withdraw-msg', '余额不足，不可透支', 'error');
+    return;
+  }
+
+  data.balance -= amount;
+  saveData(data);
+  showMsg('withdraw-msg', '取款成功！当前余额 ¥' + data.balance.toFixed(2), 'success');
+  input.value = '';
+
+  setTimeout(() => showScreen('menu'), 1200);
+});
+
+document.getElementById('withdraw-back').addEventListener('click', () => showScreen('menu'));
+
+// ========================================================================
+//  Controller – Change Password
+// ========================================================================
+document.getElementById('pwd-submit').addEventListener('click', () => {
+  clearMsg('pwd-msg');
+  data = loadData();
+  const oldPwd = document.getElementById('pwd-old').value;
+  const newPwd = document.getElementById('pwd-new').value;
+  const confirmPwd = document.getElementById('pwd-confirm').value;
+
+  if (oldPwd !== data.password) {
+    showMsg('pwd-msg', '旧密码输入错误', 'error'); return;
+  }
+  if (newPwd !== confirmPwd) {
+    showMsg('pwd-msg', '两次输入的新密码不一致', 'error'); return;
+  }
+  if (newPwd.length < 6) {
+    showMsg('pwd-msg', '新密码长度至少需要 6 位', 'error'); return;
+  }
+  if (new Set(newPwd).size === 1) {
+    showMsg('pwd-msg', '新密码不能是完全相同的字符', 'error'); return;
+  }
+
+  data.password = newPwd;
+  saveData(data);
+  showMsg('pwd-msg', '密码修改成功，请重新登录', 'success');
+
+  setTimeout(() => {
+    document.getElementById('pwd-old').value = '';
+    document.getElementById('pwd-new').value = '';
+    document.getElementById('pwd-confirm').value = '';
+    logout();
+  }, 1400);
+});
+
+document.getElementById('pwd-back').addEventListener('click', () => showScreen('menu'));
+
+// ========================================================================
+//  Keyboard – Enter to submit on any screen
+// ========================================================================
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  const active = document.querySelector('.screen.active');
+  if (!active) return;
+  const submitBtn = active.querySelector('.btn-primary');
+  if (submitBtn && submitBtn.id !== 'login-btn') submitBtn.click();
+});
+
+console.log('✦ AETHER 私人银行模拟已启动');
+console.log('  账号: ' + data.account);
+console.log('  余额: ¥' + data.balance.toFixed(2));
+</script>
+</body>
+</html>
