@@ -1,5 +1,13 @@
 {
-    "account": "123456",
-    "password": "111222",
-    "balance": 10100.0
+    "users": [
+        {
+            "account": "123456",
+            "password": "123456",
+            "balance": 10000.0,
+            "failed_attempts": 0,
+            "locked_until": null
+        }
+    ],
+    "transactions": [],
+    "next_account": 123457
 }

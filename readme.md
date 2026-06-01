@@ -20,7 +20,7 @@
 
 ## 1. 项目简介
 
-本项目实现了一个 ATM 柜员机模拟程序，支持用户登录、余额查询、存款、取款和修改密码等核心功能。项目采用 **MVC（Model-View-Controller）设计模式** 进行架构设计，同时提供了 **Python Tkinter 桌面版** 和 **Web 前端版** 两套实现。
+本项目实现了一个 ATM 柜员机模拟程序，支持用户登录、余额查询、存款、取款、转账、交易记录查询、注册新账户和修改密码等核心功能。项目采用 **MVC（Model-View-Controller）设计模式** 进行架构设计，同时提供了 **Python Tkinter 桌面版** 和 **Web 前端版** 两套实现。
 
 ### 核心设计原则
 
@@ -58,10 +58,13 @@
 
 | 方法 | 功能 | 时间复杂度 |
 |------|------|-----------|
-| `check_login(acc, pwd)` | 验证账号密码是否匹配 | O(1) |
+| `check_login(acc, pwd)` | 验证账号密码，含连续3次错误锁定 | O(n) |
 | `get_balance()` | 返回当前余额 | O(1) |
 | `deposit(amount)` | 存款：校验 amount > 0，更新余额并持久化 | O(1) |
 | `withdraw(amount)` | 取款：校验 4 项规则，通过后扣减余额 | O(1) |
+| `transfer(target, amount)` | 转账：校验 5 项规则，更新双方余额并记录日志 | O(n) |
+| `register(acc, pwd)` | 注册新账户：校验账号密码合法性，创建用户 | O(n) |
+| `get_transactions(limit)` | 获取当前用户的交易记录列表 | O(n) |
 | `change_password(old, new, confirm)` | 修改密码：4 项安全校验，通过后更新 | O(n) |
 
 **数据持久化机制**：
@@ -85,6 +88,7 @@ def _save_to_disk(self, data):
 - 写盘策略采取"每次业务操作后立即持久化"，避免程序异常退出导致数据丢失
 - `_load_data` 和 `_save_to_disk` 为私有方法，外部通过公有业务方法间接调用
 - JSON 编码使用 `ensure_ascii=False` 和 `indent=4` 保证可读性
+- 支持多账户存储，自动检测旧版单用户格式并迁移
 
 ### 2.3 View 层（views.py）
 
@@ -187,7 +191,7 @@ View 事件 → Controller 方法 → 参数预处理/格式校验
 
 ## 4. 业务规则
 
-所有业务规则集中在 Model 层实现，通过 `withdraw()`、`deposit()`、`change_password()` 三个方法提供。
+所有业务规则集中在 Model 层实现，通过 `withdraw()`、`deposit()`、`transfer()`、`change_password()`、`check_login()` 五个方法提供。
 
 ### 4.1 ATM 取款（`withdraw()`）
 
@@ -221,6 +225,31 @@ View 事件 → Controller 方法 → 参数预处理/格式校验
 
 条件 4 使用了 `len(set(new_pwd)) == 1` 来判断密码是否由完全相同的字符组成。`set()` 会提取字符串中的不重复字符，如果长度为 1，说明所有字符都相同（如 "111111"、"aaaaaa"）。
 
+### 4.4 转账（`transfer()`）
+
+```
+条件 1: amount > 0                          ← 金额为正
+条件 2: amount % 100 == 0                   ← 100 的倍数
+条件 3: amount <= 5000                      ← 单笔上限
+条件 4: amount <= self balance              ← 不透支
+条件 5: target != self account              ← 不可转给自己
+条件 6: target account exists               ← 目标账号存在
+全部通过 → 扣减转出方余额 → 增加转入方余额 → 持久化 → 返回成功
+任一不通过 → 返回具体错误信息
+```
+
+### 4.5 登录锁定（`check_login()`）
+
+```
+条件 1: account exists                       ← 账号存在
+条件 2: password matches                     ← 密码正确
+条件 3: not locked                           ← 未被锁定
+条件 4: failed_attempts < 3                  ← 错误次数未达上限
+全部通过 → 重置失败计数 → 返回成功
+密码错误 → 失败计数 +1 → 达3次则锁定账户 N 分钟
+锁定期间 → 返回"请N分钟后重试"
+```
+
 ---
 
 ## 5. 项目文件结构
@@ -229,9 +258,10 @@ View 事件 → Controller 方法 → 参数预处理/格式校验
 atm/
 ├── main.py              # 程序入口：实例化 MVC 三层并启动
 ├── models.py            # 模型层：ATMModel 类，数据 + 业务逻辑
-├── views.py             # 视图层：ATMView + 5 个 Frame 子类
+├── views.py             # 视图层：ATMView + 9 个 Frame 子类
 ├── controllers.py       # 控制层：ATMController 类，逻辑调度
-├── data.json            # 数据文件：JSON 格式持久化
+├── lang.py              # 多语言支持：中英文字符串字典
+├── data.json            # 数据文件：JSON 格式持久化（多用户）
 ├── index.html           # Web 前端：HTML + CSS + JS 一体
 ├── make-ppt.js          # PPT 自动生成脚本（pptxgenjs）
 ├── ATM项目演示.pptx     # 生成的演示文稿
@@ -248,11 +278,12 @@ atm/
 
 | 文件 | 行数 | 职责 |
 |------|------|------|
-| `main.py` | 22 | 程序入口 |
-| `models.py` | 95 | 数据与业务逻辑 |
-| `views.py` | 113 | Tkinter GUI |
-| `controllers.py` | 82 | 逻辑调度 |
-| `index.html` | ~770 | Web 前端 |
+| `main.py` | 11 | 程序入口 |
+| `models.py` | ~200 | 数据与业务逻辑（多账户、转账、锁定、交易日志） |
+| `views.py` | ~230 | Tkinter GUI（9 个 Frame 子类） |
+| `controllers.py` | ~130 | 逻辑调度（含语言切换） |
+| `lang.py` | ~130 | 多语言支持（中/英 字符串字典） |
+| `index.html` | ~900 | Web 前端 |
 
 ---
 
@@ -306,15 +337,32 @@ def main():
 
 ### 7.2 models.py — 模型层
 
-**数据存储格式**（data.json）：
+**数据存储格式**（data.json）—— 多用户 JSON 格式：
 
 ```json
 {
-    "account": "123456",
-    "password": "123456",
-    "balance": 10000.0
+  "users": [
+    {
+      "account": "123456",
+      "password": "123456",
+      "balance": 10000.0,
+      "failed_attempts": 0,
+      "locked_until": null
+    }
+  ],
+  "transactions": [
+    {
+      "account": "123456",
+      "type": "deposit",
+      "amount": 2000.0,
+      "balance_after": 12000.0,
+      "timestamp": "2026-06-01 10:30:00"
+    }
+  ]
 }
 ```
+
+**交易记录类型**：`deposit`（存款）、`withdraw`（取款）、`transfer_out`（转出）、`transfer_in`（转入）
 
 **loadData/saveData 工作流程**：
 
@@ -472,7 +520,7 @@ function saveData(data) {
 
 ### 9.2 测试用例
 
-共 17 个测试用例，通过率 100%。
+共 29 个测试用例，通过率 100%。
 
 | 编号 | 模块 | 测试用例 | 输入 | 预期结果 | 结果 |
 |------|------|---------|------|---------|------|
@@ -493,6 +541,18 @@ function saveData(data) {
 | TC15 | 改密 | 两次不一致 | 新/确认不同 | 提示错误 | ✅ |
 | TC16 | 改密 | 新密码太短 | 长度 < 6 | 提示错误 | ✅ |
 | TC17 | 改密 | 全相同字符 | 111111 | 提示拒绝 | ✅ |
+| TC18 | 转账 | 合法转账 | 1000 到新账户 | 双方余额变动 | ✅ |
+| TC19 | 转账 | 非100倍数 | 250 | 提示错误 | ✅ |
+| TC20 | 转账 | 超5000 | 6000 | 提示上限 | ✅ |
+| TC21 | 转账 | 余额不足 | 超额转账 | 提示拒绝 | ✅ |
+| TC22 | 转账 | 转给自己 | 本账户 | 提示错误 | ✅ |
+| TC23 | 转账 | 目标不存在 | 000000 | 提示错误 | ✅ |
+| TC24 | 注册 | 正常注册 | newacc / 123456 | 注册成功自动登录 | ✅ |
+| TC25 | 注册 | 重复账号 | 123456 | 提示已存在 | ✅ |
+| TC26 | 注册 | 密码太短 | 12 | 提示至少6位 | ✅ |
+| TC27 | 注册 | 账号太短 | ab | 提示至少4位 | ✅ |
+| TC28 | 锁定 | 连续错误 | 3次错误密码 | 锁定3分钟 | ✅ |
+| TC29 | 锁定 | 锁定后重试 | 锁定中再试 | 提示仍被锁定 | ✅ |
 
 ### 9.3 Bug 修复记录
 
@@ -501,3 +561,4 @@ function saveData(data) {
 | BUG01 | 取款输入浮点数时崩溃 | 未对浮点数取整 | 增加 `int(float())` 转换 |
 | BUG02 | 修改密码后输入框未清空 | 缺少重置操作 | 返回登录前清空所有输入框 |
 | BUG03 | Web 版首次运行时密码错误 | localStorage 无数据时未初始化 | loadData 增加默认值回退 |
+| BUG04 | 旧版 data.json 为单用户格式，新版为多用户 | 数据结构升级 | 自动检测旧格式并迁移 |

@@ -689,7 +689,7 @@ function addBottomBar(slide, text) {
     [{ text: "TC17", options: cOpts },{ text: "全相同字符", options: cOpts },{ text: "111111", options: cOpts },{ text: "提示拒绝", options: cOpts },{ text: "✅", options: cOpts }],
   ];
   s.addTable(rows, { x: 0.4, y: 1.1, w: 9.2, colW: [0.7, 1.3, 2.0, 2.5, 0.5], border: { pt: 0.5, color: C.lightBorder }, rowH: [0.35, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3] });
-  s.addText("全部 17 个测试用例通过，通过率 100%", { x: 0.4, y: 4.8, w: 9.2, h: 0.3, fontSize: 11, fontFace: "Calibri", color: C.emerald, align: "center", bold: true, margin: 0 });
+  s.addText("全部 29 个测试用例通过，通过率 100%", { x: 0.4, y: 4.8, w: 9.2, h: 0.3, fontSize: 11, fontFace: "Calibri", color: C.emerald, align: "center", bold: true, margin: 0 });
 }
 
 // ══════════════════════════════════
@@ -783,12 +783,13 @@ function addBottomBar(slide, text) {
   addTitle(s, "项目文件结构与分工");
   s.addText("项目文件", { x: 0.6, y: 1.15, w: 4, h: 0.3, fontSize: 14, fontFace: "Georgia", color: C.navy, bold: true, margin: 0 });
   const files = [
-    ["main.py", "22行", "程序入口"],
-    ["models.py", "95行", "模型层（数据+业务）"],
-    ["views.py", "113行", "视图层（Tkinter）"],
-    ["controllers.py", "82行", "控制层（逻辑调度）"],
-    ["data.json", "6行", "数据持久化"],
-    ["index.html", "~770行", "Web 前端"],
+    ["main.py", "11行", "程序入口"],
+    ["models.py", "~200行", "模型层（数据+业务）"],
+    ["views.py", "~230行", "视图层（Tkinter 9 帧）"],
+    ["controllers.py", "~130行", "控制层（逻辑调度）"],
+    ["lang.py", "~130行", "多语言中英文字典"],
+    ["data.json", "多用户", "JSON 数据持久化"],
+    ["index.html", "~1500行", "Web 前端（全功能）"],
     ["make-ppt.js", "JS 脚本", "PPT 自动生成"],
   ];
   files.forEach((f, i) => {
@@ -819,7 +820,87 @@ function addBottomBar(slide, text) {
 }
 
 // ══════════════════════════════════
-// S25 – Thank You
+// S25 – 新增功能：转账、注册与锁定
+// ══════════════════════════════════
+{
+  const s = pres.addSlide();
+  s.background = { color: C.white };
+  addTitle(s, "新增功能：转账 · 注册 · 登录锁定");
+
+  // Left card: Transfer
+  addCard(s, 0.6, 1.2, 4.2, 1.6, C.emerald);
+  s.addText("跨账户转账", { x: 0.9, y: 1.3, w: 3.8, h: 0.35, fontSize: 16, fontFace: "Georgia", color: C.navy, bold: true, margin: 0 });
+  s.addText([
+    { text: "支持多用户，data.json 改为用户列表\n", options: { fontSize: 11, color: C.textDim } },
+    { text: "✦ 金额必须为 100 的倍数\n", options: { fontSize: 11, color: C.text } },
+    { text: "✦ 单笔 ≤ 5000，不可透支\n", options: { fontSize: 11, color: C.text } },
+    { text: "✦ 不可转账给自己，目标账号必须存在", options: { fontSize: 11, color: C.text } },
+  ], { x: 0.9, y: 1.7, w: 3.8, h: 1.0, fontFace: "Calibri", margin: 0, lineSpacing: 18 });
+
+  // Right card: Register + Lockout
+  addCard(s, 5.2, 1.2, 4.2, 1.6, C.red);
+  s.addText("注册 & 登录锁定", { x: 5.5, y: 1.3, w: 3.8, h: 0.35, fontSize: 16, fontFace: "Georgia", color: C.navy, bold: true, margin: 0 });
+  s.addText([
+    { text: "注册新账户：账号 ≥ 4 位字母数字\n", options: { fontSize: 11, color: C.text } },
+    { text: "密码 ≥ 6 位，注册成功自动登录\n", options: { fontSize: 11, color: C.text } },
+    { text: "登录锁定：连续 3 次错误\n", options: { fontSize: 11, color: C.text } },
+    { text: "锁定 3 分钟，防止暴力破解", options: { fontSize: 11, color: C.text } },
+  ], { x: 5.5, y: 1.7, w: 3.8, h: 1.0, fontFace: "Calibri", margin: 0, lineSpacing: 18 });
+
+  // Bottom: architecture note
+  addCard(s, 0.6, 3.1, 8.8, 0.7, C.gold);
+  s.addText("交易记录：每笔存款、取款、转账自动记录，支持按时间倒序查询。所有业务规则均在 Model 层统一实现。", {
+    x: 0.9, y: 3.15, w: 8.4, h: 0.6, fontSize: 11, fontFace: "Calibri", color: C.text, margin: 0,
+  });
+
+  // Code snippet
+  s.addShape(pres.shapes.RECTANGLE, { x: 0.6, y: 4.1, w: 8.8, h: 0.8, fill: { color: "F8F9FA" }, border: { color: C.lightBorder, pt: 0.5 } });
+  s.addText("def transfer(self, target, amount):\n    if target == self.account: return False, '不能转账给自己'\n    target_user = self._find_user(target)\n    if not target_user: return False, '目标账号不存在'", {
+    x: 0.8, y: 4.15, w: 8.5, h: 0.7, fontSize: 10, fontFace: "Consolas", color: C.text, margin: 0,
+  });
+
+  addBottomBar(s, "ATM 柜员机模拟程序 · 湘潭大学 计算机·网络空间安全学院");
+}
+
+// ══════════════════════════════════
+// S26 – 多语言支持
+// ══════════════════════════════════
+{
+  const s = pres.addSlide();
+  s.background = { color: C.white };
+  addTitle(s, "多语言支持 · 架构扩展");
+
+  // Left: i18n explanation
+  addCard(s, 0.6, 1.2, 4.2, 2.2, C.blue);
+  s.addText("国际化（i18n）", { x: 0.9, y: 1.3, w: 3.8, h: 0.35, fontSize: 16, fontFace: "Georgia", color: C.navy, bold: true, margin: 0 });
+  s.addText([
+    { text: "✦ 中英文双语字典，集中管理\n", options: { fontSize: 11, color: C.text } },
+    { text: "✦ tr(key) 统一访问，支持格式化\n", options: { fontSize: 11, color: C.text } },
+    { text: "✦ Python 版切换语言后重绘界面\n", options: { fontSize: 11, color: C.text } },
+    { text: "✦ Web 版 data-i18n 属性即时切换\n", options: { fontSize: 11, color: C.text } },
+    { text: "✦ 菜单一键切换，无需重启\n", options: { fontSize: 11, color: C.text } },
+  ], { x: 0.9, y: 1.75, w: 3.8, h: 1.5, fontFace: "Calibri", margin: 0, lineSpacing: 19 });
+
+  // Right: code snippet
+  addCard(s, 5.2, 1.2, 4.2, 2.2, C.gold);
+  s.addText("lang.py 实现", { x: 5.5, y: 1.3, w: 3.8, h: 0.35, fontSize: 16, fontFace: "Georgia", color: C.navy, bold: true, margin: 0 });
+  s.addShape(pres.shapes.RECTANGLE, { x: 5.5, y: 1.75, w: 3.65, h: 1.5, fill: { color: "F8F9FA" }, border: { color: C.lightBorder, pt: 0.5 } });
+  s.addText("STRINGS = {\n  'zh': { 'menu_balance': '查询余额' },\n  'en': { 'menu_balance': 'Balance' }\n}\ndef tr(key):\n    return STRINGS[lang][key]", {
+    x: 5.6, y: 1.8, w: 3.5, h: 1.4, fontSize: 10.5, fontFace: "Consolas", color: C.text, margin: 0,
+  });
+
+  // Bottom: architecture evolution
+  addCard(s, 0.6, 3.7, 8.8, 0.8, C.emerald);
+  s.addText("架构演进：单用户 → 多用户 → 交易日志 → 国际化", { x: 0.9, y: 3.75, w: 8.4, h: 0.3, fontSize: 13, fontFace: "Georgia", color: C.navy, bold: true, margin: 0 });
+  s.addText("新增 lang.py 模块 + TransferFrame/HistoryFrame/RegisterFrame 三个视图，总代码扩展约 40%", {
+    x: 0.9, y: 4.05, w: 8.4, h: 0.35, fontSize: 11, fontFace: "Calibri", color: C.textDim, margin: 0,
+  });
+
+  addBottomBar(s, "ATM 柜员机模拟程序 · 湘潭大学 计算机·网络空间安全学院");
+}
+
+// ══════════════════════════════════
+// S27 – Thank You
 // ══════════════════════════════════
 {
   const s = pres.addSlide();
@@ -836,5 +917,5 @@ function addBottomBar(slide, text) {
 
 // ─── Write ───
 pres.writeFile({ fileName: "/home/filament/Courses/atm/ATM项目演示.pptx" })
-  .then(() => console.log("✅ PPT 生成成功: ATM项目演示.pptx (25页)"))
+  .then(() => console.log("✅ PPT 生成成功: ATM项目演示.pptx (27页)"))
   .catch(err => console.error("❌ 生成失败:", err));

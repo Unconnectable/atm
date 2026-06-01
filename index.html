@@ -350,6 +350,79 @@ h2 {
   font-style: italic;
 }
 
+/* ========== Language Toggle ========== */
+.lang-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: var(--transition);
+  letter-spacing: 0.5px;
+  line-height: 1.4;
+}
+.lang-btn:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+/* ========== History List ========== */
+.history-list {
+  width: 100%;
+  max-height: 290px;
+  overflow-y: auto;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 4px;
+  margin-bottom: 16px;
+}
+.history-list::-webkit-scrollbar {
+  width: 4px;
+}
+.history-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.history-list::-webkit-scrollbar-thumb {
+  background: var(--gold-dark);
+  border-radius: 2px;
+}
+.history-item {
+  padding: 9px 12px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  color: var(--text-dim);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  line-height: 1.7;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.history-item:last-child {
+  border-bottom: none;
+}
+.history-item .tx-time {
+  color: var(--text-muted);
+}
+.history-item .tx-type {
+  color: var(--gold-light);
+  font-weight: 500;
+}
+.history-item .tx-amount {
+  font-weight: 600;
+}
+.tx-positive { color: var(--success) !important; }
+.tx-negative { color: var(--error) !important; }
+.history-empty {
+  text-align: center;
+  padding: 40px 16px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-family: var(--font-sans);
+}
+
 /* ========== Responsive ========== */
 @media (max-width: 480px) {
   .app { padding: 12px; }
@@ -358,6 +431,7 @@ h2 {
   .menu-grid { gap: 10px; }
   .menu-item { padding: 18px 10px; }
   .brand-name { font-size: 18px; letter-spacing: 3px; }
+  .history-item { font-size: 11px; padding: 7px 10px; }
 }
 </style>
 </head>
@@ -375,50 +449,80 @@ h2 {
       <div class="brand-icon">✦</div>
       <span class="brand-name">AETHER</span>
     </div>
-    <div class="brand-sub">私人银行 · 安全接入</div>
+    <div class="brand-sub" data-i18n="brand.subtitle">私人银行 · 安全接入</div>
 
     <div class="msg" id="login-msg"></div>
 
     <div class="form-group">
-      <label>账号</label>
-      <input type="text" id="login-acc" placeholder="输入账号" value="123456" autocomplete="off">
+      <label data-i18n="login.account.label">账号</label>
+      <input type="text" id="login-acc" data-i18n-placeholder="login.account.placeholder" placeholder="输入账号" value="123456" autocomplete="off">
     </div>
     <div class="form-group">
-      <label>密码</label>
-      <input type="password" id="login-pwd" placeholder="输入密码" value="123456">
+      <label data-i18n="login.password.label">密码</label>
+      <input type="password" id="login-pwd" data-i18n-placeholder="login.password.placeholder" placeholder="输入密码" value="123456">
     </div>
 
-    <button class="btn btn-primary" id="login-btn">进入金库</button>
+    <button class="btn btn-primary" id="login-btn" data-i18n="login.submit">进入金库</button>
+    <button class="btn btn-ghost" id="login-register" data-i18n="login.register">注册新账户</button>
+  </div>
+
+  <!-- ===== Register ===== -->
+  <div class="screen" id="screen-register">
+    <h1 data-i18n="register.title">注册新账户</h1>
+    <div class="msg" id="register-msg"></div>
+    <div class="form-group">
+      <label data-i18n="register.account.label">账号</label>
+      <input type="text" id="register-acc" data-i18n-placeholder="register.account.placeholder" placeholder="至少 4 位字母或数字" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label data-i18n="register.password.label">密码</label>
+      <input type="password" id="register-pwd" data-i18n-placeholder="register.password.placeholder" placeholder="至少 6 位字符">
+    </div>
+    <div class="form-group">
+      <label data-i18n="register.confirm.label">确认密码</label>
+      <input type="password" id="register-confirm" data-i18n-placeholder="register.confirm.placeholder" placeholder="再次输入密码">
+    </div>
+    <button class="btn btn-primary" id="register-submit" data-i18n="register.submit">注册并登录</button>
+    <button class="btn btn-ghost" id="register-back" data-i18n="btn.back.login">返回登录</button>
   </div>
 
   <!-- ===== Menu ===== -->
   <div class="screen" id="screen-menu">
     <div class="welcome-head">
-      <span class="greeting">欢迎回来</span>
+      <span class="greeting" data-i18n="menu.welcome">欢迎回来</span>
       <span class="acc" id="menu-acc"></span>
+      <button id="lang-toggle" class="lang-btn">English</button>
     </div>
-    <h2>请选择服务</h2>
+    <h2 data-i18n="menu.title">请选择服务</h2>
 
     <div class="menu-grid">
       <button class="menu-item" data-action="balance">
         <span class="icon">🏦</span>
-        <span class="label">查询余额</span>
+        <span class="label" data-i18n="menu.balance">查询余额</span>
       </button>
       <button class="menu-item" data-action="deposit">
         <span class="icon">💰</span>
-        <span class="label">存款业务</span>
+        <span class="label" data-i18n="menu.deposit">存款业务</span>
       </button>
       <button class="menu-item" data-action="withdraw">
         <span class="icon">💳</span>
-        <span class="label">取款业务</span>
+        <span class="label" data-i18n="menu.withdraw">取款业务</span>
+      </button>
+      <button class="menu-item" data-action="transfer">
+        <span class="icon">💸</span>
+        <span class="label" data-i18n="menu.transfer">转账汇款</span>
+      </button>
+      <button class="menu-item" data-action="history">
+        <span class="icon">📋</span>
+        <span class="label" data-i18n="menu.history">交易记录</span>
       </button>
       <button class="menu-item" data-action="change-pwd">
         <span class="icon">🔐</span>
-        <span class="label">修改密码</span>
+        <span class="label" data-i18n="menu.changepwd">修改密码</span>
       </button>
       <button class="menu-item full" data-action="logout">
         <span class="icon">🚪</span>
-        <span class="label">退出登录</span>
+        <span class="label" data-i18n="menu.logout">退出登录</span>
       </button>
     </div>
   </div>
@@ -429,57 +533,81 @@ h2 {
       <div class="brand-icon">✦</div>
       <span class="brand-name">AETHER</span>
     </div>
-    <div class="balance-label">账户当前余额</div>
+    <div class="balance-label" data-i18n="balance.label">账户当前余额</div>
     <div class="balance-amount" id="balance-value">¥ 0.00</div>
 
     <div class="msg" id="balance-msg"></div>
 
-    <button class="btn btn-primary" id="balance-back">返回主菜单</button>
+    <button class="btn btn-primary" id="balance-back" data-i18n="btn.back">返回主菜单</button>
   </div>
 
   <!-- ===== Deposit ===== -->
   <div class="screen" id="screen-deposit">
-    <h1>存款业务</h1>
+    <h1 data-i18n="deposit.title">存款业务</h1>
     <div class="msg" id="deposit-msg"></div>
     <div class="form-group">
-      <label>存入金额（元）</label>
-      <input type="number" id="deposit-amount" placeholder="0.00" min="0" step="0.01">
+      <label data-i18n="deposit.amount.label">存入金额（元）</label>
+      <input type="number" id="deposit-amount" data-i18n-placeholder="deposit.amount.placeholder" placeholder="0.00" min="0" step="0.01">
     </div>
-    <button class="btn btn-primary" id="deposit-submit">确认存款</button>
-    <button class="btn btn-ghost" id="deposit-back">返回主菜单</button>
+    <button class="btn btn-primary" id="deposit-submit" data-i18n="deposit.submit">确认存款</button>
+    <button class="btn btn-ghost" id="deposit-back" data-i18n="btn.back">返回主菜单</button>
   </div>
 
   <!-- ===== Withdraw ===== -->
   <div class="screen" id="screen-withdraw">
-    <h1>取款业务</h1>
+    <h1 data-i18n="withdraw.title">取款业务</h1>
     <div class="msg" id="withdraw-msg"></div>
     <div class="form-group">
-      <label>取款金额（元）</label>
-      <input type="number" id="withdraw-amount" placeholder="0" min="0" step="100">
+      <label data-i18n="withdraw.amount.label">取款金额（元）</label>
+      <input type="number" id="withdraw-amount" data-i18n-placeholder="withdraw.amount.placeholder" placeholder="0" min="0" step="100">
     </div>
-    <p class="pwd-hint">限取 100 的倍数，单笔不超过 ¥5,000</p>
-    <button class="btn btn-primary" id="withdraw-submit">确认取款</button>
-    <button class="btn btn-ghost" id="withdraw-back">返回主菜单</button>
+    <p class="pwd-hint" data-i18n="withdraw.hint">限取 100 的倍数，单笔不超过 ¥5,000</p>
+    <button class="btn btn-primary" id="withdraw-submit" data-i18n="withdraw.submit">确认取款</button>
+    <button class="btn btn-ghost" id="withdraw-back" data-i18n="btn.back">返回主菜单</button>
+  </div>
+
+  <!-- ===== Transfer ===== -->
+  <div class="screen" id="screen-transfer">
+    <h1 data-i18n="transfer.title">转账汇款</h1>
+    <div class="msg" id="transfer-msg"></div>
+    <div class="form-group">
+      <label data-i18n="transfer.target.label">目标账号</label>
+      <input type="text" id="transfer-target" data-i18n-placeholder="transfer.target.placeholder" placeholder="输入对方账号" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label data-i18n="transfer.amount.label">转账金额（元）</label>
+      <input type="number" id="transfer-amount" data-i18n-placeholder="transfer.amount.placeholder" placeholder="0" min="0" step="100">
+    </div>
+    <p class="pwd-hint" data-i18n="transfer.hint">限转 100 的倍数，单笔不超过 ¥5,000</p>
+    <button class="btn btn-primary" id="transfer-submit" data-i18n="transfer.submit">确认转账</button>
+    <button class="btn btn-ghost" id="transfer-back" data-i18n="btn.back">返回主菜单</button>
+  </div>
+
+  <!-- ===== History ===== -->
+  <div class="screen" id="screen-history">
+    <h1 data-i18n="history.title">交易记录</h1>
+    <div class="history-list" id="history-list"></div>
+    <button class="btn btn-ghost" id="history-back" data-i18n="btn.back">返回主菜单</button>
   </div>
 
   <!-- ===== Change Password ===== -->
   <div class="screen" id="screen-changepwd">
-    <h1>安全中心</h1>
+    <h1 data-i18n="pwd.title">安全中心</h1>
     <div class="msg" id="pwd-msg"></div>
     <div class="form-group">
-      <label>当前密码</label>
-      <input type="password" id="pwd-old" placeholder="输入当前密码">
+      <label data-i18n="pwd.old.label">当前密码</label>
+      <input type="password" id="pwd-old" data-i18n-placeholder="pwd.old.placeholder" placeholder="输入当前密码">
     </div>
     <div class="form-group">
-      <label>新密码</label>
-      <input type="password" id="pwd-new" placeholder="至少 6 位字符">
+      <label data-i18n="pwd.new.label">新密码</label>
+      <input type="password" id="pwd-new" data-i18n-placeholder="pwd.new.placeholder" placeholder="至少 6 位字符">
     </div>
     <div class="form-group">
-      <label>确认新密码</label>
-      <input type="password" id="pwd-confirm" placeholder="再次输入新密码">
+      <label data-i18n="pwd.confirm.label">确认新密码</label>
+      <input type="password" id="pwd-confirm" data-i18n-placeholder="pwd.confirm.placeholder" placeholder="再次输入新密码">
     </div>
-    <button class="btn btn-primary" id="pwd-submit">确认修改</button>
-    <button class="btn btn-ghost" id="pwd-back">返回主菜单</button>
+    <button class="btn btn-primary" id="pwd-submit" data-i18n="pwd.submit">确认修改</button>
+    <button class="btn btn-ghost" id="pwd-back" data-i18n="btn.back">返回主菜单</button>
   </div>
 
 </div>
@@ -534,14 +662,22 @@ function drawBg() {
 drawBg();
 
 // ========================================================================
-//  ATM Model (localStorage)
+//  ATM Model (localStorage) — Multi-account, Transactions, Lockout
 // ========================================================================
 const STORAGE_KEY = 'aether_atm';
 
 const defaultData = {
-  account: '123456',
-  password: '123456',
-  balance: 10000.0
+  users: [
+    {
+      account: '123456',
+      password: '123456',
+      balance: 10000.0,
+      failed_attempts: 0,
+      locked_until: null
+    }
+  ],
+  transactions: [],
+  next_account: 123457
 };
 
 function loadData() {
@@ -549,11 +685,40 @@ function loadData() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const d = JSON.parse(raw);
-      if (d && d.account && d.password && typeof d.balance === 'number') return d;
+      // Migrate old single-user format: {account, password, balance}
+      if (d && typeof d.account === 'string' && !d.users) {
+        const newData = {
+          users: [{
+            account: d.account,
+            password: d.password,
+            balance: typeof d.balance === 'number' ? d.balance : 10000.0,
+            failed_attempts: 0,
+            locked_until: null
+          }],
+          transactions: [],
+          next_account: 123457
+        };
+        saveData(newData);
+        return newData;
+      }
+      // New format
+      if (d && d.users && Array.isArray(d.users)) {
+        // Ensure each user has required fields
+        d.users = d.users.map(u => ({
+          account: u.account,
+          password: u.password,
+          balance: typeof u.balance === 'number' ? u.balance : 0,
+          failed_attempts: u.failed_attempts || 0,
+          locked_until: u.locked_until || null
+        }));
+        d.transactions = d.transactions || [];
+        d.next_account = d.next_account || 123457;
+        return d;
+      }
     }
   } catch (_) { /* ignore */ }
   saveData(defaultData);
-  return { ...defaultData };
+  return JSON.parse(JSON.stringify(defaultData));
 }
 
 function saveData(data) {
@@ -561,6 +726,251 @@ function saveData(data) {
 }
 
 let data = loadData();
+let currentAccount = null;
+let currentLang = 'zh';
+
+// ========================================================================
+//  Internationalization (i18n)
+// ========================================================================
+const STRINGS = {
+  zh: {
+    'brand.subtitle': '私人银行 · 安全接入',
+    'btn.back': '返回主菜单',
+    'btn.back.login': '返回登录',
+
+    'login.account.label': '账号',
+    'login.account.placeholder': '输入账号',
+    'login.password.label': '密码',
+    'login.password.placeholder': '输入密码',
+    'login.submit': '进入金库',
+    'login.register': '注册新账户',
+    'login.error.empty': '请输入账号和密码',
+    'login.error.invalid': '账号或密码不正确',
+    'login.error.locked': '账号已被锁定，请 {minutes} 分钟后重试',
+
+    'register.title': '注册新账户',
+    'register.account.label': '账号',
+    'register.account.placeholder': '至少 4 位字母或数字',
+    'register.password.label': '密码',
+    'register.password.placeholder': '至少 6 位字符',
+    'register.confirm.label': '确认密码',
+    'register.confirm.placeholder': '再次输入密码',
+    'register.submit': '注册并登录',
+    'register.error.short.account': '账号至少需要 4 位',
+    'register.error.invalid.account': '账号只能包含数字和字母',
+    'register.error.exists': '账号已存在',
+    'register.error.short.pwd': '密码至少需要 6 位',
+    'register.error.mismatch': '两次输入的密码不一致',
+    'register.success': '注册成功，欢迎！',
+
+    'menu.welcome': '欢迎回来',
+    'menu.account_label': '账号',
+    'menu.title': '请选择服务',
+    'menu.balance': '查询余额',
+    'menu.deposit': '存款业务',
+    'menu.withdraw': '取款业务',
+    'menu.transfer': '转账汇款',
+    'menu.history': '交易记录',
+    'menu.changepwd': '修改密码',
+    'menu.logout': '退出登录',
+
+    'balance.label': '账户当前余额',
+
+    'deposit.title': '存款业务',
+    'deposit.amount.label': '存入金额（元）',
+    'deposit.amount.placeholder': '0.00',
+    'deposit.submit': '确认存款',
+    'deposit.success': '存款成功！当前余额 ¥{balance}',
+    'deposit.error.invalid': '请输入有效的存款金额',
+
+    'withdraw.title': '取款业务',
+    'withdraw.amount.label': '取款金额（元）',
+    'withdraw.amount.placeholder': '0',
+    'withdraw.hint': '限取 100 的倍数，单笔不超过 ¥5,000',
+    'withdraw.submit': '确认取款',
+    'withdraw.success': '取款成功！当前余额 ¥{balance}',
+    'withdraw.error.invalid': '请输入有效的取款金额',
+    'withdraw.error.multiple': '取款金额必须是 100 的倍数',
+    'withdraw.error.max': '单次取款不能超过 ¥5,000',
+    'withdraw.error.insufficient': '余额不足，不可透支',
+
+    'transfer.title': '转账汇款',
+    'transfer.target.label': '目标账号',
+    'transfer.target.placeholder': '输入对方账号',
+    'transfer.amount.label': '转账金额（元）',
+    'transfer.amount.placeholder': '0',
+    'transfer.hint': '限转 100 的倍数，单笔不超过 ¥5,000',
+    'transfer.submit': '确认转账',
+    'transfer.success': '转账成功！当前余额 ¥{balance}',
+    'transfer.error.invalid': '请输入有效的转账金额',
+    'transfer.error.multiple': '转账金额必须是 100 的倍数',
+    'transfer.error.max': '单笔转账不能超过 ¥5,000',
+    'transfer.error.insufficient': '余额不足',
+    'transfer.error.self': '不能转账给自己',
+    'transfer.error.notfound': '目标账号不存在',
+
+    'history.title': '交易记录',
+    'history.empty': '暂无交易记录',
+    'history.balance': '余额',
+    'history.type.deposit': '存款',
+    'history.type.withdraw': '取款',
+    'history.type.transfer_out': '转出',
+    'history.type.transfer_in': '转入',
+    'history.to': '至',
+    'history.from': '来自',
+
+    'pwd.title': '安全中心',
+    'pwd.old.label': '当前密码',
+    'pwd.old.placeholder': '输入当前密码',
+    'pwd.new.label': '新密码',
+    'pwd.new.placeholder': '至少 6 位字符',
+    'pwd.confirm.label': '确认新密码',
+    'pwd.confirm.placeholder': '再次输入新密码',
+    'pwd.submit': '确认修改',
+    'pwd.error.old': '旧密码输入错误',
+    'pwd.error.mismatch': '两次输入的新密码不一致',
+    'pwd.error.short': '新密码长度至少需要 6 位',
+    'pwd.error.same': '新密码不能是完全相同的字符',
+    'pwd.success': '密码修改成功，请重新登录',
+
+    'lockout.message': '账号已被锁定，请 {minutes} 分钟后重试',
+  },
+  en: {
+    'brand.subtitle': 'Private Banking · Secure Access',
+    'btn.back': 'Back to Menu',
+    'btn.back.login': 'Back to Login',
+
+    'login.account.label': 'Account',
+    'login.account.placeholder': 'Enter account number',
+    'login.password.label': 'Password',
+    'login.password.placeholder': 'Enter password',
+    'login.submit': 'Enter Vault',
+    'login.register': 'Create New Account',
+    'login.error.empty': 'Please enter account and password',
+    'login.error.invalid': 'Incorrect account or password',
+    'login.error.locked': 'Account locked. Please retry in {minutes} minute(s)',
+
+    'register.title': 'Create Account',
+    'register.account.label': 'Account',
+    'register.account.placeholder': 'At least 4 alphanumeric chars',
+    'register.password.label': 'Password',
+    'register.password.placeholder': 'At least 6 characters',
+    'register.confirm.label': 'Confirm Password',
+    'register.confirm.placeholder': 'Re-enter password',
+    'register.submit': 'Register & Login',
+    'register.error.short.account': 'Account must be at least 4 characters',
+    'register.error.invalid.account': 'Account can only contain letters and numbers',
+    'register.error.exists': 'Account already exists',
+    'register.error.short.pwd': 'Password must be at least 6 characters',
+    'register.error.mismatch': 'Passwords do not match',
+    'register.success': 'Registration successful, welcome!',
+
+    'menu.welcome': 'Welcome back',
+    'menu.account_label': 'Account',
+    'menu.title': 'Select Service',
+    'menu.balance': 'Balance',
+    'menu.deposit': 'Deposit',
+    'menu.withdraw': 'Withdraw',
+    'menu.transfer': 'Transfer',
+    'menu.history': 'History',
+    'menu.changepwd': 'Change PIN',
+    'menu.logout': 'Logout',
+
+    'balance.label': 'Current Balance',
+
+    'deposit.title': 'Deposit',
+    'deposit.amount.label': 'Amount (CNY)',
+    'deposit.amount.placeholder': '0.00',
+    'deposit.submit': 'Confirm Deposit',
+    'deposit.success': 'Deposit successful! Balance ¥{balance}',
+    'deposit.error.invalid': 'Please enter a valid amount',
+
+    'withdraw.title': 'Withdraw',
+    'withdraw.amount.label': 'Amount (CNY)',
+    'withdraw.amount.placeholder': '0',
+    'withdraw.hint': 'Multiple of 100 only, max ¥5,000 per withdrawal',
+    'withdraw.submit': 'Confirm Withdrawal',
+    'withdraw.success': 'Withdrawal successful! Balance ¥{balance}',
+    'withdraw.error.invalid': 'Please enter a valid amount',
+    'withdraw.error.multiple': 'Amount must be a multiple of 100',
+    'withdraw.error.max': 'Max withdrawal is ¥5,000 per transaction',
+    'withdraw.error.insufficient': 'Insufficient balance',
+
+    'transfer.title': 'Transfer',
+    'transfer.target.label': 'Target Account',
+    'transfer.target.placeholder': 'Enter target account',
+    'transfer.amount.label': 'Amount (CNY)',
+    'transfer.amount.placeholder': '0',
+    'transfer.hint': 'Multiple of 100 only, max ¥5,000 per transfer',
+    'transfer.submit': 'Confirm Transfer',
+    'transfer.success': 'Transfer successful! Balance ¥{balance}',
+    'transfer.error.invalid': 'Please enter a valid amount',
+    'transfer.error.multiple': 'Transfer amount must be a multiple of 100',
+    'transfer.error.max': 'Max transfer is ¥5,000 per transaction',
+    'transfer.error.insufficient': 'Insufficient balance',
+    'transfer.error.self': 'Cannot transfer to yourself',
+    'transfer.error.notfound': 'Target account does not exist',
+
+    'history.title': 'Transaction History',
+    'history.empty': 'No transactions yet',
+    'history.balance': 'Balance',
+    'history.type.deposit': 'Deposit',
+    'history.type.withdraw': 'Withdraw',
+    'history.type.transfer_out': 'Transfer Out',
+    'history.type.transfer_in': 'Transfer In',
+    'history.to': 'to',
+    'history.from': 'from',
+
+    'pwd.title': 'Security Center',
+    'pwd.old.label': 'Current Password',
+    'pwd.old.placeholder': 'Enter current password',
+    'pwd.new.label': 'New Password',
+    'pwd.new.placeholder': 'At least 6 characters',
+    'pwd.confirm.label': 'Confirm New Password',
+    'pwd.confirm.placeholder': 'Re-enter new password',
+    'pwd.submit': 'Confirm Change',
+    'pwd.error.old': 'Incorrect current password',
+    'pwd.error.mismatch': 'New passwords do not match',
+    'pwd.error.short': 'New password must be at least 6 characters',
+    'pwd.error.same': 'New password cannot be all the same character',
+    'pwd.success': 'Password changed. Please login again',
+
+    'lockout.message': 'Account locked. Please retry in {minutes} minute(s)',
+  }
+};
+
+function _(key, replacements) {
+  const lang = STRINGS[currentLang];
+  const fallback = STRINGS['zh'];
+  let str = (lang && lang[key]) || (fallback && fallback[key]) || key;
+  if (replacements) {
+    for (const [k, v] of Object.entries(replacements)) {
+      str = str.replace(new RegExp('\\{' + k + '\\}', 'g'), v);
+    }
+  }
+  return str;
+}
+
+function applyLanguage() {
+  // Update all static text via data-i18n
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (key) el.textContent = _(key);
+  });
+  // Update all placeholders via data-i18n-placeholder
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.dataset.i18nPlaceholder;
+    if (key) el.placeholder = _(key);
+  });
+  // Language toggle button shows the other option
+  const langBtn = document.getElementById('lang-toggle');
+  if (langBtn) langBtn.textContent = currentLang === 'zh' ? 'English' : '中文';
+  // Re-apply account display if logged in
+  if (currentAccount) {
+    const accEl = document.getElementById('menu-acc');
+    if (accEl) accEl.textContent = _('menu.account_label') + ' ' + currentAccount;
+  }
+}
 
 // ========================================================================
 //  Screen Manager
@@ -582,6 +992,9 @@ function showScreen(id) {
   nextEl.classList.add('active');
   currentScreen = id;
 
+  // Apply language to the newly shown screen
+  applyLanguage();
+
   // Focus first input in the new screen
   const firstInput = nextEl.querySelector('input');
   if (firstInput) setTimeout(() => firstInput.focus(), 100);
@@ -600,6 +1013,28 @@ function clearMsg(id) {
 }
 
 // ========================================================================
+//  Helpers – User lookup
+// ========================================================================
+function findUser(account) {
+  for (const u of data.users) {
+    if (u.account === account) return u;
+  }
+  return null;
+}
+
+function getCurrentUser() {
+  if (!currentAccount) return null;
+  return findUser(currentAccount);
+}
+
+function getNextAccount() {
+  const num = data.next_account || 123457;
+  data.next_account = num + 1;
+  saveData(data);
+  return String(num);
+}
+
+// ========================================================================
 //  Controller – Login
 // ========================================================================
 document.getElementById('login-btn').addEventListener('click', () => {
@@ -608,21 +1043,123 @@ document.getElementById('login-btn').addEventListener('click', () => {
   const pwd = document.getElementById('login-pwd').value;
 
   if (!acc || !pwd) {
-    showMsg('login-msg', '请输入账号和密码', 'error');
+    showMsg('login-msg', _('login.error.empty'), 'error');
     return;
   }
 
-  if (acc === data.account && pwd === data.password) {
-    document.getElementById('menu-acc').textContent = '账号 ' + data.account;
+  data = loadData();
+  const user = findUser(acc);
+  if (!user) {
+    showMsg('login-msg', _('login.error.invalid'), 'error');
+    return;
+  }
+
+  // Check lockout
+  if (user.locked_until) {
+    const remaining = user.locked_until - Math.floor(Date.now() / 1000);
+    if (remaining > 0) {
+      const mins = Math.ceil(remaining / 60);
+      showMsg('login-msg', _('login.error.locked', { minutes: mins }), 'error');
+      return;
+    } else {
+      // Lock expired
+      user.locked_until = null;
+      user.failed_attempts = 0;
+      saveData(data);
+    }
+  }
+
+  if (pwd === user.password) {
+    user.failed_attempts = 0;
+    currentAccount = acc;
+    saveData(data);
+    document.getElementById('menu-acc').textContent = _('menu.account_label') + ' ' + currentAccount;
+    applyLanguage();
     showScreen('menu');
   } else {
-    showMsg('login-msg', '账号或密码不正确', 'error');
+    user.failed_attempts = (user.failed_attempts || 0) + 1;
+    if (user.failed_attempts >= 3) {
+      user.locked_until = Math.floor(Date.now() / 1000) + 180; // 3 minutes
+      saveData(data);
+      showMsg('login-msg', _('login.error.locked', { minutes: 3 }), 'error');
+    } else {
+      saveData(data);
+      showMsg('login-msg', _('login.error.invalid'), 'error');
+    }
   }
 });
 
-// Enter key on password field triggers login
+// Enter key on login fields triggers login
+document.getElementById('login-acc').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('login-btn').click();
+});
 document.getElementById('login-pwd').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') document.getElementById('login-btn').click();
+});
+
+// Register button on login screen
+document.getElementById('login-register').addEventListener('click', () => {
+  clearMsg('login-msg');
+  document.getElementById('register-acc').value = '';
+  document.getElementById('register-pwd').value = '';
+  document.getElementById('register-confirm').value = '';
+  clearMsg('register-msg');
+  showScreen('register');
+});
+
+// ========================================================================
+//  Controller – Register
+// ========================================================================
+document.getElementById('register-submit').addEventListener('click', () => {
+  clearMsg('register-msg');
+  data = loadData();
+
+  const acc = document.getElementById('register-acc').value.trim();
+  const pwd = document.getElementById('register-pwd').value;
+  const confirmPwd = document.getElementById('register-confirm').value;
+
+  // Validation
+  if (!acc || acc.length < 4) {
+    showMsg('register-msg', _('register.error.short.account'), 'error');
+    return;
+  }
+  if (!/^[a-zA-Z0-9]+$/.test(acc)) {
+    showMsg('register-msg', _('register.error.invalid.account'), 'error');
+    return;
+  }
+  if (findUser(acc)) {
+    showMsg('register-msg', _('register.error.exists'), 'error');
+    return;
+  }
+  if (!pwd || pwd.length < 6) {
+    showMsg('register-msg', _('register.error.short.pwd'), 'error');
+    return;
+  }
+  if (pwd !== confirmPwd) {
+    showMsg('register-msg', _('register.error.mismatch'), 'error');
+    return;
+  }
+
+  // Create user
+  data.users.push({
+    account: acc,
+    password: pwd,
+    balance: 0.0,
+    failed_attempts: 0,
+    locked_until: null
+  });
+  saveData(data);
+
+  // Auto-login
+  currentAccount = acc;
+  document.getElementById('menu-acc').textContent = _('menu.account_label') + ' ' + currentAccount;
+  showMsg('register-msg', _('register.success'), 'success');
+  applyLanguage();
+  showScreen('menu');
+});
+
+document.getElementById('register-back').addEventListener('click', () => {
+  showScreen('login');
 });
 
 // ========================================================================
@@ -635,15 +1172,31 @@ document.querySelectorAll('.menu-item').forEach(btn => {
       case 'balance': showBalance(); break;
       case 'deposit': showScreen('deposit'); clearMsg('deposit-msg'); break;
       case 'withdraw': showScreen('withdraw'); clearMsg('withdraw-msg'); break;
+      case 'transfer': showScreen('transfer'); clearMsg('transfer-msg'); break;
+      case 'history': showHistory(); break;
       case 'change-pwd': showScreen('changepwd'); clearMsg('pwd-msg'); break;
       case 'logout': logout(); break;
     }
   });
 });
 
+// Language toggle
+document.getElementById('lang-toggle').addEventListener('click', () => {
+  currentLang = currentLang === 'zh' ? 'en' : 'zh';
+  applyLanguage();
+  // Re-render dynamic content on current screen
+  if (currentScreen === 'balance') {
+    showBalance();
+  } else if (currentScreen === 'history') {
+    showHistory();
+  } else if (currentScreen === 'menu' && currentAccount) {
+    document.getElementById('menu-acc').textContent = _('menu.account_label') + ' ' + currentAccount;
+  }
+});
+
 function logout() {
-  data = loadData(); // re-sync
-  // Clear all input fields
+  data = loadData();
+  currentAccount = null;
   document.getElementById('login-acc').value = '123456';
   document.getElementById('login-pwd').value = '123456';
   clearMsg('login-msg');
@@ -655,7 +1208,9 @@ function logout() {
 // ========================================================================
 function showBalance() {
   data = loadData();
-  document.getElementById('balance-value').textContent = '¥ ' + data.balance.toFixed(2);
+  const user = getCurrentUser();
+  if (!user) { logout(); return; }
+  document.getElementById('balance-value').textContent = '¥ ' + user.balance.toFixed(2);
   clearMsg('balance-msg');
   showScreen('balance');
 }
@@ -668,17 +1223,21 @@ document.getElementById('balance-back').addEventListener('click', () => showScre
 document.getElementById('deposit-submit').addEventListener('click', () => {
   clearMsg('deposit-msg');
   data = loadData();
+  const user = getCurrentUser();
+  if (!user) { logout(); return; }
+
   const input = document.getElementById('deposit-amount');
   const amount = parseFloat(input.value);
 
   if (isNaN(amount) || amount <= 0) {
-    showMsg('deposit-msg', '请输入有效的存款金额', 'error');
+    showMsg('deposit-msg', _('deposit.error.invalid'), 'error');
     return;
   }
 
-  data.balance += amount;
+  user.balance += amount;
+  logTransaction('deposit', amount, user.balance);
   saveData(data);
-  showMsg('deposit-msg', '存款成功！当前余额 ¥' + data.balance.toFixed(2), 'success');
+  showMsg('deposit-msg', _('deposit.success', { balance: user.balance.toFixed(2) }), 'success');
   input.value = '';
 
   setTimeout(() => showScreen('menu'), 1200);
@@ -692,29 +1251,33 @@ document.getElementById('deposit-back').addEventListener('click', () => showScre
 document.getElementById('withdraw-submit').addEventListener('click', () => {
   clearMsg('withdraw-msg');
   data = loadData();
+  const user = getCurrentUser();
+  if (!user) { logout(); return; }
+
   const input = document.getElementById('withdraw-amount');
   const amount = parseInt(input.value, 10);
 
   if (isNaN(amount) || amount <= 0) {
-    showMsg('withdraw-msg', '请输入有效的取款金额', 'error');
+    showMsg('withdraw-msg', _('withdraw.error.invalid'), 'error');
     return;
   }
   if (amount % 100 !== 0) {
-    showMsg('withdraw-msg', '取款金额必须是 100 的倍数', 'error');
+    showMsg('withdraw-msg', _('withdraw.error.multiple'), 'error');
     return;
   }
   if (amount > 5000) {
-    showMsg('withdraw-msg', '单次取款不能超过 ¥5,000', 'error');
+    showMsg('withdraw-msg', _('withdraw.error.max'), 'error');
     return;
   }
-  if (amount > data.balance) {
-    showMsg('withdraw-msg', '余额不足，不可透支', 'error');
+  if (amount > user.balance) {
+    showMsg('withdraw-msg', _('withdraw.error.insufficient'), 'error');
     return;
   }
 
-  data.balance -= amount;
+  user.balance -= amount;
+  logTransaction('withdraw', amount, user.balance);
   saveData(data);
-  showMsg('withdraw-msg', '取款成功！当前余额 ¥' + data.balance.toFixed(2), 'success');
+  showMsg('withdraw-msg', _('withdraw.success', { balance: user.balance.toFixed(2) }), 'success');
   input.value = '';
 
   setTimeout(() => showScreen('menu'), 1200);
@@ -723,31 +1286,192 @@ document.getElementById('withdraw-submit').addEventListener('click', () => {
 document.getElementById('withdraw-back').addEventListener('click', () => showScreen('menu'));
 
 // ========================================================================
+//  Controller – Transfer
+// ========================================================================
+document.getElementById('transfer-submit').addEventListener('click', () => {
+  clearMsg('transfer-msg');
+  data = loadData();
+  const user = getCurrentUser();
+  if (!user) { logout(); return; }
+
+  const targetInput = document.getElementById('transfer-target');
+  const amountInput = document.getElementById('transfer-amount');
+  const targetAccount = targetInput.value.trim();
+  const amount = parseInt(amountInput.value, 10);
+
+  if (!targetAccount) {
+    showMsg('transfer-msg', _('transfer.error.notfound'), 'error');
+    return;
+  }
+  if (targetAccount === user.account) {
+    showMsg('transfer-msg', _('transfer.error.self'), 'error');
+    return;
+  }
+  if (isNaN(amount) || amount <= 0) {
+    showMsg('transfer-msg', _('transfer.error.invalid'), 'error');
+    return;
+  }
+  if (amount % 100 !== 0) {
+    showMsg('transfer-msg', _('transfer.error.multiple'), 'error');
+    return;
+  }
+  if (amount > 5000) {
+    showMsg('transfer-msg', _('transfer.error.max'), 'error');
+    return;
+  }
+  if (amount > user.balance) {
+    showMsg('transfer-msg', _('transfer.error.insufficient'), 'error');
+    return;
+  }
+
+  const target = findUser(targetAccount);
+  if (!target) {
+    showMsg('transfer-msg', _('transfer.error.notfound'), 'error');
+    return;
+  }
+
+  // Execute transfer
+  user.balance -= amount;
+  target.balance += amount;
+  logTransaction('transfer_out', amount, user.balance, targetAccount);
+  logTransactionFor(targetAccount, 'transfer_in', amount, target.balance, user.account);
+  saveData(data);
+  showMsg('transfer-msg', _('transfer.success', { balance: user.balance.toFixed(2) }), 'success');
+  targetInput.value = '';
+  amountInput.value = '';
+
+  setTimeout(() => showScreen('menu'), 1200);
+});
+
+document.getElementById('transfer-back').addEventListener('click', () => showScreen('menu'));
+
+// ========================================================================
+//  Controller – Transaction History
+// ========================================================================
+function showHistory() {
+  data = loadData();
+  const user = getCurrentUser();
+  if (!user) { logout(); return; }
+
+  const container = document.getElementById('history-list');
+  container.innerHTML = '';
+
+  // Get current user's transactions, sorted newest first, limit 50
+  const txns = data.transactions
+    .filter(t => t.account === currentAccount)
+    .sort((a, b) => {
+      // Sort by timestamp descending (most recent first)
+      return b.timestamp.localeCompare(a.timestamp);
+    })
+    .slice(0, 50);
+
+  if (txns.length === 0) {
+    container.innerHTML = '<div class="history-empty" data-i18n="history.empty">' +
+      _('history.empty') + '</div>';
+    return;
+  }
+
+  txns.forEach(tx => {
+    const typeStr = _('history.type.' + tx.type);
+    const isPositive = tx.type === 'deposit' || tx.type === 'transfer_in';
+    const displayAmount = isPositive ? '+' + tx.amount.toFixed(2) : '-' + tx.amount.toFixed(2);
+    const amountClass = isPositive ? 'tx-positive' : 'tx-negative';
+
+    let targetStr = '';
+    if (tx.target) {
+      if (tx.type === 'transfer_out') {
+        targetStr = '  → ' + _('history.to') + ' ' + tx.target;
+      } else if (tx.type === 'transfer_in') {
+        targetStr = '  ← ' + _('history.from') + ' ' + tx.target;
+      }
+    }
+
+    const div = document.createElement('div');
+    div.className = 'history-item';
+    div.innerHTML =
+      '<span class="tx-time">' + tx.timestamp + '</span>  ' +
+      '<span class="tx-type">' + typeStr + '</span>  ' +
+      '<span class="tx-amount ' + amountClass + '">' + displayAmount + '</span>' +
+      '  ' + _('history.balance') + ': ' + tx.balance_after.toFixed(2) +
+      targetStr;
+    container.appendChild(div);
+  });
+
+  showScreen('history');
+}
+
+document.getElementById('history-back').addEventListener('click', () => showScreen('menu'));
+
+// ========================================================================
+//  Transaction Logging
+// ========================================================================
+function logTransaction(txType, amount, balanceAfter, target) {
+  const now = new Date();
+  const timestamp = now.getFullYear() + '-' +
+    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+    String(now.getDate()).padStart(2, '0') + ' ' +
+    String(now.getHours()).padStart(2, '0') + ':' +
+    String(now.getMinutes()).padStart(2, '0') + ':' +
+    String(now.getSeconds()).padStart(2, '0');
+
+  data.transactions.push({
+    account: currentAccount,
+    type: txType,
+    amount: amount,
+    target: target || null,
+    balance_after: balanceAfter,
+    timestamp: timestamp
+  });
+}
+
+function logTransactionFor(account, txType, amount, balanceAfter, source) {
+  const now = new Date();
+  const timestamp = now.getFullYear() + '-' +
+    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+    String(now.getDate()).padStart(2, '0') + ' ' +
+    String(now.getHours()).padStart(2, '0') + ':' +
+    String(now.getMinutes()).padStart(2, '0') + ':' +
+    String(now.getSeconds()).padStart(2, '0');
+
+  data.transactions.push({
+    account: account,
+    type: txType,
+    amount: amount,
+    target: source || null,
+    balance_after: balanceAfter,
+    timestamp: timestamp
+  });
+}
+
+// ========================================================================
 //  Controller – Change Password
 // ========================================================================
 document.getElementById('pwd-submit').addEventListener('click', () => {
   clearMsg('pwd-msg');
   data = loadData();
+  const user = getCurrentUser();
+  if (!user) { logout(); return; }
+
   const oldPwd = document.getElementById('pwd-old').value;
   const newPwd = document.getElementById('pwd-new').value;
   const confirmPwd = document.getElementById('pwd-confirm').value;
 
-  if (oldPwd !== data.password) {
-    showMsg('pwd-msg', '旧密码输入错误', 'error'); return;
+  if (oldPwd !== user.password) {
+    showMsg('pwd-msg', _('pwd.error.old'), 'error'); return;
   }
   if (newPwd !== confirmPwd) {
-    showMsg('pwd-msg', '两次输入的新密码不一致', 'error'); return;
+    showMsg('pwd-msg', _('pwd.error.mismatch'), 'error'); return;
   }
   if (newPwd.length < 6) {
-    showMsg('pwd-msg', '新密码长度至少需要 6 位', 'error'); return;
+    showMsg('pwd-msg', _('pwd.error.short'), 'error'); return;
   }
   if (new Set(newPwd).size === 1) {
-    showMsg('pwd-msg', '新密码不能是完全相同的字符', 'error'); return;
+    showMsg('pwd-msg', _('pwd.error.same'), 'error'); return;
   }
 
-  data.password = newPwd;
+  user.password = newPwd;
   saveData(data);
-  showMsg('pwd-msg', '密码修改成功，请重新登录', 'success');
+  showMsg('pwd-msg', _('pwd.success'), 'success');
 
   setTimeout(() => {
     document.getElementById('pwd-old').value = '';
@@ -770,9 +1494,17 @@ document.addEventListener('keydown', (e) => {
   if (submitBtn && submitBtn.id !== 'login-btn') submitBtn.click();
 });
 
+// ========================================================================
+//  Initialisation
+// ========================================================================
+applyLanguage();
+
 console.log('✦ AETHER 私人银行模拟已启动');
-console.log('  账号: ' + data.account);
-console.log('  余额: ¥' + data.balance.toFixed(2));
+console.log('  用户数: ' + data.users.length);
+if (data.users.length > 0) {
+  console.log('  默认账号: ' + data.users[0].account);
+  console.log('  默认余额: ¥' + data.users[0].balance.toFixed(2));
+}
 </script>
 </body>
 </html>
