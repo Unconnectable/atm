@@ -662,9 +662,12 @@ function drawBg() {
 drawBg();
 
 // ========================================================================
-//  ATM Model (localStorage) — Multi-account, Transactions, Lockout
+//  ATM Model — Server API 优先，localStorage 兜底，共享 data.json
 // ========================================================================
 const STORAGE_KEY = 'aether_atm';
+const API_URL = '/api/data';
+
+let _serverAvailable = false;
 
 const defaultData = {
   users: [
@@ -680,41 +683,41 @@ const defaultData = {
   next_account: 123457
 };
 
+function migrateData(d) {
+  if (d && typeof d.account === 'string' && !d.users) {
+    return {
+      users: [{
+        account: d.account,
+        password: d.password,
+        balance: typeof d.balance === 'number' ? d.balance : 10000.0,
+        failed_attempts: 0,
+        locked_until: null
+      }],
+      transactions: [],
+      next_account: 123457
+    };
+  }
+  if (d && d.users && Array.isArray(d.users)) {
+    d.users = d.users.map(u => ({
+      account: u.account,
+      password: u.password,
+      balance: typeof u.balance === 'number' ? u.balance : 0,
+      failed_attempts: u.failed_attempts || 0,
+      locked_until: u.locked_until || null
+    }));
+    d.transactions = d.transactions || [];
+    d.next_account = d.next_account || 123457;
+    return d;
+  }
+  return null;
+}
+
 function loadData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      const d = JSON.parse(raw);
-      // Migrate old single-user format: {account, password, balance}
-      if (d && typeof d.account === 'string' && !d.users) {
-        const newData = {
-          users: [{
-            account: d.account,
-            password: d.password,
-            balance: typeof d.balance === 'number' ? d.balance : 10000.0,
-            failed_attempts: 0,
-            locked_until: null
-          }],
-          transactions: [],
-          next_account: 123457
-        };
-        saveData(newData);
-        return newData;
-      }
-      // New format
-      if (d && d.users && Array.isArray(d.users)) {
-        // Ensure each user has required fields
-        d.users = d.users.map(u => ({
-          account: u.account,
-          password: u.password,
-          balance: typeof u.balance === 'number' ? u.balance : 0,
-          failed_attempts: u.failed_attempts || 0,
-          locked_until: u.locked_until || null
-        }));
-        d.transactions = d.transactions || [];
-        d.next_account = d.next_account || 123457;
-        return d;
-      }
+      const d = migrateData(JSON.parse(raw));
+      if (d) return d;
     }
   } catch (_) { /* ignore */ }
   saveData(defaultData);
@@ -723,6 +726,36 @@ function loadData() {
 
 function saveData(data) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  // 同步写回 data.json（如果服务器可用）
+  if (_serverAvailable) {
+    fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).catch(function() { _serverAvailable = false; });
+  }
+}
+
+// 启动时尝试从服务器拉取最新数据覆盖 localStorage
+function syncFromServer() {
+  return fetch(API_URL)
+    .then(function(res) {
+      if (!res.ok) throw new Error('server unavailable');
+      return res.json();
+    })
+    .then(function(d) {
+      var migrated = migrateData(d);
+      if (migrated) {
+        _serverAvailable = true;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+        return migrated;
+      }
+      throw new Error('invalid data');
+    })
+    .catch(function() {
+      _serverAvailable = false;
+      return null;
+    });
 }
 
 let data = loadData();
@@ -1047,46 +1080,50 @@ document.getElementById('login-btn').addEventListener('click', () => {
     return;
   }
 
-  data = loadData();
-  const user = findUser(acc);
-  if (!user) {
-    showMsg('login-msg', _('login.error.invalid'), 'error');
-    return;
-  }
+  // 先从服务器同步最新 data.json，再执行登录
+  syncFromServer().then(function(serverData) {
+    if (serverData) data = serverData;
 
-  // Check lockout
-  if (user.locked_until) {
-    const remaining = user.locked_until - Math.floor(Date.now() / 1000);
-    if (remaining > 0) {
-      const mins = Math.ceil(remaining / 60);
-      showMsg('login-msg', _('login.error.locked', { minutes: mins }), 'error');
-      return;
-    } else {
-      // Lock expired
-      user.locked_until = null;
-      user.failed_attempts = 0;
-      saveData(data);
-    }
-  }
-
-  if (pwd === user.password) {
-    user.failed_attempts = 0;
-    currentAccount = acc;
-    saveData(data);
-    document.getElementById('menu-acc').textContent = _('menu.account_label') + ' ' + currentAccount;
-    applyLanguage();
-    showScreen('menu');
-  } else {
-    user.failed_attempts = (user.failed_attempts || 0) + 1;
-    if (user.failed_attempts >= 3) {
-      user.locked_until = Math.floor(Date.now() / 1000) + 180; // 3 minutes
-      saveData(data);
-      showMsg('login-msg', _('login.error.locked', { minutes: 3 }), 'error');
-    } else {
-      saveData(data);
+    const user = findUser(acc);
+    if (!user) {
       showMsg('login-msg', _('login.error.invalid'), 'error');
+      return;
     }
-  }
+
+    // Check lockout
+    if (user.locked_until) {
+      const remaining = user.locked_until - Math.floor(Date.now() / 1000);
+      if (remaining > 0) {
+        const mins = Math.ceil(remaining / 60);
+        showMsg('login-msg', _('login.error.locked', { minutes: mins }), 'error');
+        return;
+      } else {
+        // Lock expired
+        user.locked_until = null;
+        user.failed_attempts = 0;
+        saveData(data);
+      }
+    }
+
+    if (pwd === user.password) {
+      user.failed_attempts = 0;
+      currentAccount = acc;
+      saveData(data);
+      document.getElementById('menu-acc').textContent = _('menu.account_label') + ' ' + currentAccount;
+      applyLanguage();
+      showScreen('menu');
+    } else {
+      user.failed_attempts = (user.failed_attempts || 0) + 1;
+      if (user.failed_attempts >= 3) {
+        user.locked_until = Math.floor(Date.now() / 1000) + 180; // 3 minutes
+        saveData(data);
+        showMsg('login-msg', _('login.error.locked', { minutes: 3 }), 'error');
+      } else {
+        saveData(data);
+        showMsg('login-msg', _('login.error.invalid'), 'error');
+      }
+    }
+  }); // end syncFromServer
 });
 
 // Enter key on login fields triggers login
@@ -1112,7 +1149,6 @@ document.getElementById('login-register').addEventListener('click', () => {
 // ========================================================================
 document.getElementById('register-submit').addEventListener('click', () => {
   clearMsg('register-msg');
-  data = loadData();
 
   const acc = document.getElementById('register-acc').value.trim();
   const pwd = document.getElementById('register-pwd').value;
@@ -1195,7 +1231,6 @@ document.getElementById('lang-toggle').addEventListener('click', () => {
 });
 
 function logout() {
-  data = loadData();
   currentAccount = null;
   document.getElementById('login-acc').value = '123456';
   document.getElementById('login-pwd').value = '123456';
@@ -1207,7 +1242,6 @@ function logout() {
 //  Controller – Balance
 // ========================================================================
 function showBalance() {
-  data = loadData();
   const user = getCurrentUser();
   if (!user) { logout(); return; }
   document.getElementById('balance-value').textContent = '¥ ' + user.balance.toFixed(2);
@@ -1222,7 +1256,6 @@ document.getElementById('balance-back').addEventListener('click', () => showScre
 // ========================================================================
 document.getElementById('deposit-submit').addEventListener('click', () => {
   clearMsg('deposit-msg');
-  data = loadData();
   const user = getCurrentUser();
   if (!user) { logout(); return; }
 
@@ -1250,7 +1283,6 @@ document.getElementById('deposit-back').addEventListener('click', () => showScre
 // ========================================================================
 document.getElementById('withdraw-submit').addEventListener('click', () => {
   clearMsg('withdraw-msg');
-  data = loadData();
   const user = getCurrentUser();
   if (!user) { logout(); return; }
 
@@ -1290,7 +1322,6 @@ document.getElementById('withdraw-back').addEventListener('click', () => showScr
 // ========================================================================
 document.getElementById('transfer-submit').addEventListener('click', () => {
   clearMsg('transfer-msg');
-  data = loadData();
   const user = getCurrentUser();
   if (!user) { logout(); return; }
 
@@ -1349,7 +1380,6 @@ document.getElementById('transfer-back').addEventListener('click', () => showScr
 //  Controller – Transaction History
 // ========================================================================
 function showHistory() {
-  data = loadData();
   const user = getCurrentUser();
   if (!user) { logout(); return; }
 
@@ -1448,7 +1478,6 @@ function logTransactionFor(account, txType, amount, balanceAfter, source) {
 // ========================================================================
 document.getElementById('pwd-submit').addEventListener('click', () => {
   clearMsg('pwd-msg');
-  data = loadData();
   const user = getCurrentUser();
   if (!user) { logout(); return; }
 
@@ -1495,16 +1524,22 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ========================================================================
-//  Initialisation
+//  Initialisation — 先从服务器同步 data.json，再启动
 // ========================================================================
 applyLanguage();
 
-console.log('✦ AETHER 私人银行模拟已启动');
-console.log('  用户数: ' + data.users.length);
-if (data.users.length > 0) {
-  console.log('  默认账号: ' + data.users[0].account);
-  console.log('  默认余额: ¥' + data.users[0].balance.toFixed(2));
-}
+syncFromServer().then(function(serverData) {
+  if (serverData) {
+    data = serverData;
+    console.log('✦ 已从 data.json 同步数据');
+  }
+  console.log('✦ AETHER 私人银行模拟已启动');
+  console.log('  用户数: ' + data.users.length);
+  if (data.users.length > 0) {
+    console.log('  默认账号: ' + data.users[0].account);
+    console.log('  默认余额: ¥' + data.users[0].balance.toFixed(2));
+  }
+});
 </script>
 </body>
 </html>
