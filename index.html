@@ -662,12 +662,14 @@ function drawBg() {
 drawBg();
 
 // ========================================================================
-//  ATM Model — Server API 优先，localStorage 兜底，共享 data.json
+//  ATM Model — data.json 优先，localStorage 兜底，自动双向同步
+//  兼容：双击打开 (file://) / 服务器 (http://) / 旧版 localStorage
 // ========================================================================
 const STORAGE_KEY = 'aether_atm';
 const API_URL = '/api/data';
 
-let _serverAvailable = false;
+let _serverAvailable = false;      // HTTP 服务器是否可用
+let _dataJsonAvailable = false;    // data.json 文件直读是否可用
 
 const defaultData = {
   users: [
@@ -712,53 +714,232 @@ function migrateData(d) {
   return null;
 }
 
+// ---- 读取 data.json --------------------------------------------------------
+// 优先级: HTTP API > 文件直读 (XHR) > localStorage
+
+function loadDataFromJsonFile() {
+  // 方法1: fetch (Firefox 文件直读 / HTTP 服务器)
+  return fetch('data.json', { cache: 'no-cache' }).then(function(res) {
+    if (!res.ok) throw new Error('fetch failed');
+    return res.json();
+  });
+}
+
+function loadDataFromJsonFileXHR() {
+  // 方法2: XHR (Chrome/Edge 文件直读，需要 --allow-file-access-from-files)
+  return new Promise(function(resolve, reject) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', 'data.json', true);
+    xhr.onload = function() {
+      if (xhr.status === 200 || xhr.status === 0) {
+        try { resolve(JSON.parse(xhr.responseText)); }
+        catch(e) { reject(e); }
+      } else { reject(new Error('XHR status ' + xhr.status)); }
+    };
+    xhr.onerror = function() { reject(new Error('XHR error')); };
+    xhr.send();
+  });
+}
+
 function loadData() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    var raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      const d = migrateData(JSON.parse(raw));
+      var d = migrateData(JSON.parse(raw));
       if (d) return d;
     }
   } catch (_) { /* ignore */ }
-  saveData(defaultData);
+  saveToLocal(defaultData);
   return JSON.parse(JSON.stringify(defaultData));
 }
 
-function saveData(data) {
+// ---- 写入 data.json --------------------------------------------------------
+// 优先级: File System Access API > HTTP API > localStorage
+
+var _dirHandle = null;      // 缓存的目录句柄
+var _dirHandlePromise = null;
+
+function getDirHandleFromDB() {
+  return new Promise(function(resolve, reject) {
+    if (!window.indexedDB) return reject();
+    var req = window.indexedDB.open('aether_fs', 1);
+    req.onupgradeneeded = function(e) {
+      e.target.result.createObjectStore('handles');
+    };
+    req.onsuccess = function(e) {
+      var tx = e.target.result.transaction('handles', 'readonly');
+      var getReq = tx.objectStore('handles').get('projectDir');
+      getReq.onsuccess = function() { resolve(getReq.result); };
+      getReq.onerror = reject;
+      tx.oncomplete = function() { e.target.result.close(); };
+    };
+    req.onerror = reject;
+  });
+}
+
+function saveDirHandleToDB(handle) {
+  return new Promise(function(resolve) {
+    if (!window.indexedDB) { resolve(); return; }
+    var req = window.indexedDB.open('aether_fs', 1);
+    req.onupgradeneeded = function(e) {
+      e.target.result.createObjectStore('handles');
+    };
+    req.onsuccess = function(e) {
+      var tx = e.target.result.transaction('handles', 'readwrite');
+      tx.objectStore('handles').put(handle, 'projectDir');
+      tx.oncomplete = function() { e.target.result.close(); resolve(); };
+    };
+  });
+}
+
+function getDirHandle() {
+  if (_dirHandle) return Promise.resolve(_dirHandle);
+  if (_dirHandlePromise) return _dirHandlePromise;
+
+  _dirHandlePromise = getDirHandleFromDB().then(function(handle) {
+    if (handle) {
+      return handle.queryPermission({ mode: 'readwrite' }).then(function(state) {
+        if (state === 'granted') {
+          _dirHandle = handle;
+          return handle;
+        }
+        return requestDirHandle();
+      });
+    }
+    return requestDirHandle();
+  }).catch(function() {
+    return requestDirHandle();
+  });
+
+  return _dirHandlePromise;
+}
+
+function requestDirHandle() {
+  if (typeof window.showDirectoryPicker !== 'function') {
+    return Promise.reject(new Error('API not available'));
+  }
+  return window.showDirectoryPicker({ mode: 'readwrite' }).then(function(handle) {
+    _dirHandle = handle;
+    saveDirHandleToDB(handle);
+    return handle;
+  });
+}
+
+function saveToDataJsonFile(data) {
+  return getDirHandle().then(function(dirHandle) {
+    return dirHandle.getFileHandle('data.json', { create: true });
+  }).then(function(fileHandle) {
+    return fileHandle.createWritable();
+  }).then(function(writable) {
+    var jsonStr = JSON.stringify(data, null, 4);
+    var p = writable.write(jsonStr).then(function() {
+      return writable.close();
+    });
+    _dataJsonAvailable = true;
+    return p;
+  });
+}
+
+function saveToServer(data) {
+  return fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }).then(function(res) {
+    if (!res.ok) throw new Error('server save failed');
+    _serverAvailable = true;
+  });
+}
+
+function saveToLocal(data) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  // 同步写回 data.json（如果服务器可用）
-  if (_serverAvailable) {
-    fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    }).catch(function() { _serverAvailable = false; });
+}
+
+function saveData(data) {
+  saveToLocal(data);
+
+  // 异步写回 data.json：File System Access API > 服务器 > 静默
+  if (_dataJsonAvailable) {
+    saveToDataJsonFile(data).catch(function() {
+      _dataJsonAvailable = false;
+      tryServerSave(data);
+    });
+  } else if (_serverAvailable) {
+    tryServerSave(data);
+  } else {
+    // 初次尝试：优先 File System Access，其次服务器
+    saveToDataJsonFile(data).then(function() {
+      _dataJsonAvailable = true;
+    }).catch(function() {
+      saveToServer(data).then(function() {
+        _serverAvailable = true;
+      }).catch(function() { /* 静默 */ });
+    });
   }
 }
 
-// 启动时尝试从服务器拉取最新数据覆盖 localStorage
-function syncFromServer() {
-  return fetch(API_URL)
-    .then(function(res) {
-      if (!res.ok) throw new Error('server unavailable');
-      return res.json();
-    })
-    .then(function(d) {
-      var migrated = migrateData(d);
-      if (migrated) {
-        _serverAvailable = true;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
-        return migrated;
-      }
-      throw new Error('invalid data');
-    })
-    .catch(function() {
-      _serverAvailable = false;
-      return null;
-    });
+function tryServerSave(data) {
+  saveToServer(data).catch(function() { _serverAvailable = false; });
 }
 
-let data = loadData();
+// ---- 启动时同步 data.json -------------------------------------------------
+
+function syncFromDataJson() {
+  // 依次尝试: fetch → XHR
+  return loadDataFromJsonFile().then(function(d) {
+    var m = migrateData(d);
+    if (m) {
+      _dataJsonAvailable = true;
+      saveToLocal(m);
+      return m;
+    }
+    return null;
+  }).catch(function() {
+    return loadDataFromJsonFileXHR().then(function(d) {
+      var m = migrateData(d);
+      if (m) {
+        _dataJsonAvailable = true;
+        saveToLocal(m);
+        return m;
+      }
+      return null;
+    }).catch(function() {
+      return null;
+    });
+  });
+}
+
+// 向后兼容的服务器同步（通过 HTTP API）
+function syncFromServer() {
+  return fetch(API_URL).then(function(res) {
+    if (!res.ok) throw new Error('server unavailable');
+    return res.json();
+  }).then(function(d) {
+    var m = migrateData(d);
+    if (m) {
+      _serverAvailable = true;
+      saveToLocal(m);
+      return m;
+    }
+    throw new Error('invalid data');
+  }).catch(function() {
+    _serverAvailable = false;
+    return null;
+  });
+}
+
+// 启动全流程: data.json 直读 > 服务器 API > localStorage
+function initData() {
+  return syncFromDataJson().then(function(d) {
+    if (d) return d;
+    return syncFromServer().then(function(d2) {
+      if (d2) return d2;
+      return loadData();
+    });
+  });
+}
+
+let data = loadData();  // 占位，initData() 完成后会覆盖
 let currentAccount = null;
 let currentLang = 'zh';
 
@@ -1080,9 +1261,15 @@ document.getElementById('login-btn').addEventListener('click', () => {
     return;
   }
 
-  // 先从服务器同步最新 data.json，再执行登录
-  syncFromServer().then(function(serverData) {
-    if (serverData) data = serverData;
+  // 先从 data.json 同步最新数据，再执行登录
+  syncFromDataJson().then(function(jsonData) {
+    if (jsonData) data = jsonData;
+    else {
+      return syncFromServer().then(function(srvData) {
+        if (srvData) data = srvData;
+      });
+    }
+  }).then(function() {
 
     const user = findUser(acc);
     if (!user) {
@@ -1528,10 +1715,12 @@ document.addEventListener('keydown', (e) => {
 // ========================================================================
 applyLanguage();
 
-syncFromServer().then(function(serverData) {
-  if (serverData) {
-    data = serverData;
-    console.log('✦ 已从 data.json 同步数据');
+initData().then(function(initResult) {
+  if (initResult) data = initResult;
+  if (_dataJsonAvailable) {
+    console.log('✦ 已从 data.json 直接读取数据');
+  } else if (_serverAvailable) {
+    console.log('✦ 已从服务器同步 data.json');
   }
   console.log('✦ AETHER 私人银行模拟已启动');
   console.log('  用户数: ' + data.users.length);
